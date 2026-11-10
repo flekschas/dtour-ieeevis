@@ -1,0 +1,8 @@
+{
+  "name": "dtour-ieeevis",
+  "private": true,
+  "scripts": {
+    "dev": "uvx marimo@latest edit ieee-vis-2026.py --sandbox --no-token",
+    "start": "uvx marimo@latest run ieee-vis-2026.py --sandbox --watch"
+  }
+}

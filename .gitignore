@@ -1,0 +1,12 @@
+.DS_Store
+__pycache__
+__marimo__
+.venv
+
+# LaTeX build output
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.synctex.gz

@@ -1,0 +1,7 @@
+/* Darker page background in dark mode (marimo's default is #181c1a) */
+:root:has(body.dark),
+body.dark,
+.dark .marimo,
+.marimo:is(.dark *) {
+  --background: #111;
+}
