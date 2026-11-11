@@ -268,14 +268,14 @@ def _(kicker, slide, title):
 
 
     # Keyframes deliberately unevenly spaced. One bullet at a time along the bottom; build steps (reveal.js fragments):
-    # 0 the C⁰ scheme alone · 1 the Catmull–Rom scheme fades in beside it · 2 drop the C⁰ scheme, then bend
-    # the spline into the slider ring at the center (keyframes at their arc length; the tour loops, so a
+    # 0 the C⁰ path (straight segments) in the center · 1 the segments bend into the Catmull–Rom spline
+    # · 2 the spline bends into the slider ring (keyframes at their arc length; the tour loops, so a
     # closing segment grows out of the last keyframe) · 3 space keyframes equally, so each segment's width
     # shows how much it was squeezed · 4 a marker plays the tour: constant speed in projection space, so it
     # lingers on wide segments · 5 the marker scrubs instead: constant speed around the slider
     _STEPS, _LAP = 24, 8  # _LAP: seconds per loop of the marker
     _CENTER, _RADIUS = (240, 90), 78
-    _C0_AT, _CR_AT = (10, 20), (278, 20)  # where the C⁰ and Catmull–Rom schemes sit in state 0
+    _AT = (138, 20)  # where the keyframe path sits, centered on the ring
     _keyframes = [(x, 1.4 * y) for x, y in [(12, 72), (24, 50), (130, 78), (142, 22), (192, 60)]]  # stretched to fill the height
     _k = len(_keyframes)
 
@@ -284,7 +284,7 @@ def _(kicker, slide, title):
         return [(x + offset[0], y + offset[1]) for x, y in points]
 
 
-    _spline = _at(_catmull_rom(_keyframes, _STEPS), _CR_AT)
+    _spline = _at(_catmull_rom(_keyframes, _STEPS), _AT)
     _segments = [_spline[i * _STEPS : (i + 1) * _STEPS + 1] for i in range(_k - 1)]
     # Closing segment (last → first keyframe), with the tangents of a closed Catmull–Rom loop
     _p0, _p1, _p2, _p3 = (_keyframes[i] for i in (-2, -1, 0, 1))
@@ -294,7 +294,7 @@ def _(kicker, slide, title):
             for a, b, c, d in zip(_p0, _p1, _p2, _p3)
         )
         for t in (s / _STEPS for s in range(_STEPS + 1))
-    ], _CR_AT))
+    ], _AT))
     _lengths = [sum(_math.dist(a, b) for a, b in zip(seg, seg[1:])) for seg in _segments]
     _total = sum(_lengths)
 
@@ -310,10 +310,15 @@ def _(kicker, slide, title):
         for a, b in zip(seg, seg[1:]):
             walked.append(walked[-1] + _math.dist(a, b))
         # The open path has no closing segment yet: it starts collapsed onto the last keyframe
-        path = [seg[0]] * len(seg) if i == _k - 1 else seg
+        if i == _k - 1:
+            c0 = path = [seg[0]] * len(seg)
+        else:
+            (x0, y0), (x1, y1) = seg[0], seg[-1]
+            c0 = [(x0 + (x1 - x0) * s / _STEPS, y0 + (y1 - y0) * s / _STEPS) for s in range(_STEPS + 1)]  # straight
+            path = seg
         ring = [_on_ring((start + s) / _total) for s in walked]  # arc-length spacing
         equal = [_on_ring((i + s / _lengths[i]) / _k) for s in walked]  # equal spacing
-        return path, ring, equal
+        return c0, path, ring, equal
 
 
     def _d(points):
@@ -321,7 +326,8 @@ def _(kicker, slide, title):
 
 
     _dot_states = [
-        _at(_keyframes, _CR_AT),
+        _at(_keyframes, _AT),
+        _at(_keyframes, _AT),
         [_on_ring(sum(_lengths[:j]) / _total) for j in range(_k)],
         [_on_ring(j / _k) for j in range(_k)],
     ]
@@ -345,20 +351,15 @@ def _(kicker, slide, title):
         ".dt-slide:has(.dt-k-scrub.visible) .dt-k-icon-play { opacity: 0; }",
         ".dt-slide:has(.dt-k-scrub.visible) .dt-k-icon-scrub { opacity: 1; }",
     ]
-    _states = [
-        ("", ""),
-        # Starts on its own once the C⁰ scheme has faded out
-        ("svg:has(.dt-k-ring.visible) ", " transition-delay: 0.4s;"),
-        ("svg:has(.dt-k-equal.visible) ", " transition-delay: 0s;"),
-    ]
-    for _state, (_marker, _delay) in enumerate(_states):
+    _states = ["", "svg:has(.dt-k-cr.visible) ", "svg:has(.dt-k-ring.visible) ", "svg:has(.dt-k-equal.visible) "]
+    for _state, _marker in enumerate(_states):
         for _i in range(_k):
             # Equal spacing squeezes long segments (thicker) and stretches short ones (thinner),
             # with width proportional to length like dtour's slider ring
-            _width = f" stroke-width: {max(0.5, 2.4 * _lengths[_i] * _k / _total):.2f};" if _state == 2 else ""
-            _css.append(f"{_marker}.dt-k-seg-{_i} {{ d: {_d(_seg_states(_i)[_state])};{_width}{_delay} }}")
+            _width = f" stroke-width: {max(0.5, 2.4 * _lengths[_i] * _k / _total):.2f};" if _state == 3 else ""
+            _css.append(f"{_marker}.dt-k-seg-{_i} {{ d: {_d(_seg_states(_i)[_state])};{_width} }}")
         for _j, (_x, _y) in enumerate(_dot_states[_state]):
-            _css.append(f"{_marker}.dt-k-dot-{_j} {{ cx: {_x:.2f}px; cy: {_y:.2f}px;{_delay} }}")
+            _css.append(f"{_marker}.dt-k-dot-{_j} {{ cx: {_x:.2f}px; cy: {_y:.2f}px; }}")
 
 
     def _step(i, effect="", cls=""):
@@ -367,7 +368,7 @@ def _(kicker, slide, title):
 
 
     def _caption(text, x, *attrs):
-        return f'<text x="{x}" y="146" fill="#A9A9A9" font-size="8" text-anchor="middle" {" ".join(attrs)}>{text}</text>'
+        return f'<text x="{x}" y="155" fill="#A9A9A9" font-size="8" text-anchor="middle" {" ".join(attrs)}>{text}</text>'
 
 
     def _heading(text, x):
@@ -392,26 +393,21 @@ def _(kicker, slide, title):
         )
 
 
-    _c0 = "M" + " L".join(f"{x},{y}" for x, y in _at(_keyframes, _C0_AT))
     _figure = f"""<svg viewBox="0 0 480 180" style="width:100%; flex:1; min-height:0" font-family="inherit">
     <style>{chr(10).join(_css)}</style>
-    <g {_step(2, cls="dt-k-ring")}></g><g {_step(3, cls="dt-k-equal")}></g>
-    <g {_step(2, "fade-out")}>
-      <path d="{_c0}" fill="none" stroke="#fff" stroke-width="2.2"/>
-      {"".join(f'<circle cx="{x}" cy="{y}" r="3.2" fill="#FEC10E"/>' for x, y in _at(_keyframes, _C0_AT))}
-      {_heading("Piecewise geodesic: C⁰", _C0_AT[0] + 102)}
-      {_caption("jumps abruptly at every keyframe", _C0_AT[0] + 102)}
+    <g {_step(1, cls="dt-k-cr")}></g><g {_step(2, cls="dt-k-ring")}></g><g {_step(3, cls="dt-k-equal")}></g>
+    <g {_step(1, "fade-out")}>
+      {_heading("Piecewise geodesic: C⁰", _CENTER[0])}
+      {_caption("jumps abruptly at every keyframe", _CENTER[0])}
     </g>
-    <g {_step(1)}>
-      {"".join(f'<path class="dt-k-seg dt-k-seg-{i}"/>' for i in range(_k))}
-      {"".join(f'<circle class="dt-k-dot dt-k-dot-{j}" r="3.2"/>' for j in range(_k))}
-    </g>
+    {"".join(f'<path class="dt-k-seg dt-k-seg-{i}"/>' for i in range(_k))}
+    {"".join(f'<circle class="dt-k-dot dt-k-dot-{j}" r="3.2"/>' for j in range(_k))}
     {_icon("dt-k-icon-play", '<path d="M6 3 L20 12 L6 21 Z"/>')}
     {_icon("dt-k-icon-scrub", _HAND)}
     <circle class="dt-k-marker" cx="{_CENTER[0]}" cy="{_CENTER[1] - _RADIUS}" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/>
     <g {_step(1, "fade-in-then-out")}>
-      {_heading("Catmull–Rom on frames + Gram–Schmidt: C¹", _CR_AT[0] + 102)}
-      {_caption("visits every keyframe smoothly", _CR_AT[0] + 102)}
+      {_heading("Catmull–Rom on frames + Gram–Schmidt: C¹", _CENTER[0])}
+      {_caption("visits every keyframe smoothly", _CENTER[0])}
     </g>
     </svg>"""
 
