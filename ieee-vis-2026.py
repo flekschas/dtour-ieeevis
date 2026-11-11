@@ -407,18 +407,18 @@ def _(kicker, slide, title):
     {_icon("dt-k-icon-scrub", _HAND)}
     <circle class="dt-k-marker" cx="{_CENTER[0]}" cy="{_CENTER[1] - _RADIUS}" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/>
     <g {_step(1, "fade-in-then-out")}>
-      {_heading("Catmull–Rom on frames + Gram–Schmidt: C¹", _CENTER[0])}
+      {_heading("Catmull–Rom interpolation + Gram–Schmidt: C¹", _CENTER[0])}
       {_caption("visits every keyframe smoothly", _CENTER[0])}
     </g>
     </svg>"""
 
     # One bullet per build step, stacked in the same grid cell: (step, fragment effect and classes, text)
     _bullets = [
-        (1, "fade-in-then-out", "<b>Catmull–Rom</b> through the keyframe bases, re-orthonormalized → no direction jumps"),
-        (2, "fade-in-then-out", "<b>Closed loop</b>: the guided path wraps from the last keyframe back to the first"),
-        (3, "fade-in-then-out dt-k-width", "<b>Slider ring</b>: <span class='dt-y'>width</span> encodes the geodesic distance between keyframes"),
-        (4, "fade-in-then-out dt-k-play", "<b>Playback</b> is paced by geodesic distance: it travels through projection space at constant speed"),
-        (5, "dt-k-scrub", "<b>Scrubbing</b> moves evenly across the slider: it travels faster when keyframes are far apart"),
+        (1, "fade-in-then-out", "<span class='dt-y'><b>Catmull–Rom</b></span> through the keyframe bases, re-orthonormalized → no direction jumps"),
+        (2, "fade-in-then-out", "<span class='dt-y'><b>Closed loop:</b></span> the guided path wraps from the last keyframe back to the first"),
+        (3, "fade-in-then-out dt-k-width", "<span class='dt-y'><b>Slider ring:</b></span> arc width encodes the geodesic distance between keyframes"),
+        (4, "fade-in-then-out dt-k-play", "<span class='dt-y'><b>Playback</b></span> is paced by geodesic distance: it travels through projection space at constant speed"),
+        (5, "dt-k-scrub", "<span class='dt-y'><b>Scrubbing</b></span> gives each keyframe equal share: it travels faster when keyframes are far apart"),
     ]
     _bullet_row = (
         '<div style="display:grid; text-align:center; min-height:2.8em; align-items:center; padding:0 6cqw">'
