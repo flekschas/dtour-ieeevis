@@ -247,8 +247,8 @@ def _(slide):
     return
 
 
-@app.cell
-def _(col, kicker, row, slide, title):
+@app.cell(expand_output=True)
+def _(kicker, slide, title):
     import math as _math
 
 
@@ -267,25 +267,34 @@ def _(col, kicker, row, slide, title):
         return [*out, pts[-1]]
 
 
-    # Keyframes deliberately unevenly spaced. Build steps (reveal.js fragments):
-    # 1 drop the C⁰ path and captions, then bend the spline into the slider ring (keyframes at their
-    # arc length; the tour loops, so a closing segment grows out of the last keyframe) · 2 space
-    # keyframes equally, so each segment's width shows how much it was squeezed, then the takeaway
-    _STEPS, _OFFSET, _CENTER, _RADIUS = 24, 125, (100, 125), 78
-    _keyframes = [(12, 72), (24, 50), (130, 78), (142, 22), (192, 60)]
+    # Keyframes deliberately unevenly spaced. One bullet at a time along the bottom; build steps (reveal.js fragments):
+    # 0 the C⁰ scheme alone · 1 the Catmull–Rom scheme fades in beside it · 2 drop the C⁰ scheme, then bend
+    # the spline into the slider ring at the center (keyframes at their arc length; the tour loops, so a
+    # closing segment grows out of the last keyframe) · 3 space keyframes equally, so each segment's width
+    # shows how much it was squeezed · 4 a marker plays the tour: constant speed in projection space, so it
+    # lingers on wide segments · 5 the marker scrubs instead: constant speed around the slider
+    _STEPS, _LAP = 24, 8  # _LAP: seconds per loop of the marker
+    _CENTER, _RADIUS = (240, 90), 78
+    _C0_AT, _CR_AT = (10, 20), (278, 20)  # where the C⁰ and Catmull–Rom schemes sit in state 0
+    _keyframes = [(x, 1.4 * y) for x, y in [(12, 72), (24, 50), (130, 78), (142, 22), (192, 60)]]  # stretched to fill the height
     _k = len(_keyframes)
-    _spline = [(x, y + _OFFSET) for x, y in _catmull_rom(_keyframes, _STEPS)]
+
+
+    def _at(points, offset):
+        return [(x + offset[0], y + offset[1]) for x, y in points]
+
+
+    _spline = _at(_catmull_rom(_keyframes, _STEPS), _CR_AT)
     _segments = [_spline[i * _STEPS : (i + 1) * _STEPS + 1] for i in range(_k - 1)]
     # Closing segment (last → first keyframe), with the tangents of a closed Catmull–Rom loop
     _p0, _p1, _p2, _p3 = (_keyframes[i] for i in (-2, -1, 0, 1))
-    _segments.append([
+    _segments.append(_at([
         tuple(
             0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t**2 + (-a + 3 * b - 3 * c + d) * t**3)
-            + (_OFFSET if axis else 0)
-            for axis, (a, b, c, d) in enumerate(zip(_p0, _p1, _p2, _p3))
+            for a, b, c, d in zip(_p0, _p1, _p2, _p3)
         )
         for t in (s / _STEPS for s in range(_STEPS + 1))
-    ])
+    ], _CR_AT))
     _lengths = [sum(_math.dist(a, b) for a, b in zip(seg, seg[1:])) for seg in _segments]
     _total = sum(_lengths)
 
@@ -312,18 +321,33 @@ def _(col, kicker, row, slide, title):
 
 
     _dot_states = [
-        [(x, y + _OFFSET) for x, y in _keyframes],
+        _at(_keyframes, _CR_AT),
         [_on_ring(sum(_lengths[:j]) / _total) for j in range(_k)],
         [_on_ring(j / _k) for j in range(_k)],
     ]
     _css = [
         ".dt-k-seg { fill: none; stroke: #fff; stroke-width: 2.2; transition: d 1.2s ease-in-out, stroke-width 1.2s ease-in-out; }",
         ".dt-k-dot { fill: #FEC10E; transition: cx 1.2s ease-in-out, cy 1.2s ease-in-out; }",
-        ".reveal .slides section .fragment.dt-k-caption.visible { transition-delay: 1.2s; }",
+        # The ring-width bullet waits for the equal spacing to settle
+        ".reveal .slides section .fragment.dt-k-width.current-fragment { transition-delay: 1.2s; }",
+        # Position marker, rotated about the ring center (it sits at the top of the ring)
+        f".dt-k-marker {{ opacity: 0; transform-origin: {_CENTER[0]}px {_CENTER[1]}px; transition: opacity 0.4s; }}",
+        f".dt-slide:has(.dt-k-play.visible) .dt-k-marker {{ opacity: 1; animation: dt-k-play {_LAP}s linear infinite; }}",
+        f".dt-slide:has(.dt-k-scrub.visible) .dt-k-marker {{ animation: dt-k-scrub {_LAP}s linear infinite; }}",
+        # Playback: each segment takes time proportional to its length but gets an equal 1/k of the ring
+        "@keyframes dt-k-play { "
+        + " ".join(f"{100 * sum(_lengths[:j]) / _total:.2f}% {{ transform: rotate({360 * j / _k:.2f}deg); }}" for j in range(_k + 1))
+        + " }",
+        "@keyframes dt-k-scrub { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
+        # Play / hand icon in the ring's center, shown with the matching marker animation
+        ".dt-k-icon { opacity: 0; transition: opacity 0.4s; }",
+        ".dt-slide:has(.dt-k-play.visible) .dt-k-icon-play { opacity: 1; }",
+        ".dt-slide:has(.dt-k-scrub.visible) .dt-k-icon-play { opacity: 0; }",
+        ".dt-slide:has(.dt-k-scrub.visible) .dt-k-icon-scrub { opacity: 1; }",
     ]
     _states = [
         ("", ""),
-        # Starts on its own once the C⁰ path has faded out
+        # Starts on its own once the C⁰ scheme has faded out
         ("svg:has(.dt-k-ring.visible) ", " transition-delay: 0.4s;"),
         ("svg:has(.dt-k-equal.visible) ", " transition-delay: 0s;"),
     ]
@@ -342,40 +366,78 @@ def _(col, kicker, row, slide, title):
         return f'class="{classes}" data-fragment-index="{i}"'
 
 
-    _c0 = "M" + " L".join(f"{x},{y}" for x, y in _keyframes)
-    _figure = f"""<svg viewBox="0 0 200 250" style="width:100%; flex:1; min-height:0" font-family="inherit">
+    def _caption(text, x, *attrs):
+        return f'<text x="{x}" y="146" fill="#A9A9A9" font-size="8" text-anchor="middle" {" ".join(attrs)}>{text}</text>'
+
+
+    def _heading(text, x):
+        return f'<text x="{x}" y="34" fill="#fff" font-size="9" font-weight="600" text-anchor="middle">{text}</text>'
+
+
+    # 24×24 icons (Lucide, ISC license), drawn at _ICON units in the ring's center
+    _ICON = 34
+    _HAND = (
+        '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>'
+        '<path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>'
+        '<path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>'
+        '<path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.83L7 15"/>'
+    )
+
+
+    def _icon(cls, shapes):
+        x, y, s = _CENTER[0] - _ICON / 2, _CENTER[1] - _ICON / 2, _ICON / 24
+        return (
+            f'<g class="dt-k-icon {cls}" transform="translate({x} {y}) scale({s})" fill="none" stroke="#fff" '
+            f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{shapes}</g>'
+        )
+
+
+    _c0 = "M" + " L".join(f"{x},{y}" for x, y in _at(_keyframes, _C0_AT))
+    _figure = f"""<svg viewBox="0 0 480 180" style="width:100%; flex:1; min-height:0" font-family="inherit">
     <style>{chr(10).join(_css)}</style>
-    <g {_step(1, cls="dt-k-ring")}></g><g {_step(2, cls="dt-k-equal")}></g>
-    <g {_step(1, "fade-out")}>
+    <g {_step(2, cls="dt-k-ring")}></g><g {_step(3, cls="dt-k-equal")}></g>
+    <g {_step(2, "fade-out")}>
       <path d="{_c0}" fill="none" stroke="#fff" stroke-width="2.2"/>
-      {"".join(f'<circle cx="{x}" cy="{y}" r="3.2" fill="#FEC10E"/>' for x, y in _keyframes)}
-      <text x="100" y="104" fill="#A9A9A9" font-size="8" text-anchor="middle">piecewise geodesic: C⁰, kinks at every keyframe</text>
+      {"".join(f'<circle cx="{x}" cy="{y}" r="3.2" fill="#FEC10E"/>' for x, y in _at(_keyframes, _C0_AT))}
+      {_heading("Piecewise geodesic: C⁰", _C0_AT[0] + 102)}
+      {_caption("jumps abruptly at every keyframe", _C0_AT[0] + 102)}
     </g>
-    {"".join(f'<path class="dt-k-seg dt-k-seg-{i}"/>' for i in range(_k))}
-    {"".join(f'<circle class="dt-k-dot dt-k-dot-{j}" r="3.2"/>' for j in range(_k))}
-    <text x="100" y="229" fill="#A9A9A9" font-size="8" text-anchor="middle" {_step(1, "fade-out")}>Catmull–Rom on frames + Gram–Schmidt: C¹, hits every keyframe</text>
+    <g {_step(1)}>
+      {"".join(f'<path class="dt-k-seg dt-k-seg-{i}"/>' for i in range(_k))}
+      {"".join(f'<circle class="dt-k-dot dt-k-dot-{j}" r="3.2"/>' for j in range(_k))}
+    </g>
+    {_icon("dt-k-icon-play", '<path d="M6 3 L20 12 L6 21 Z"/>')}
+    {_icon("dt-k-icon-scrub", _HAND)}
+    <circle class="dt-k-marker" cx="{_CENTER[0]}" cy="{_CENTER[1] - _RADIUS}" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <g {_step(1, "fade-in-then-out")}>
+      {_heading("Catmull–Rom on frames + Gram–Schmidt: C¹", _CR_AT[0] + 102)}
+      {_caption("visits every keyframe smoothly", _CR_AT[0] + 102)}
+    </g>
     </svg>"""
+
+    # One bullet per build step, stacked in the same grid cell: (step, fragment effect and classes, text)
+    _bullets = [
+        (1, "fade-in-then-out", "<b>Catmull–Rom</b> through the keyframe bases, re-orthonormalized → no direction jumps"),
+        (2, "fade-in-then-out", "<b>Closed loop</b>: the guided path wraps from the last keyframe back to the first"),
+        (3, "fade-in-then-out dt-k-width", "<b>Slider ring</b>: <span class='dt-y'>width</span> encodes the geodesic distance between keyframes"),
+        (4, "fade-in-then-out dt-k-play", "<b>Playback</b> is paced by geodesic distance: it travels through projection space at constant speed"),
+        (5, "dt-k-scrub", "<b>Scrubbing</b> moves evenly across the slider: it travels faster when keyframes are far apart"),
+    ]
+    _bullet_row = (
+        '<div style="display:grid; text-align:center; min-height:2.8em; align-items:center; padding:0 6cqw">'
+        + "".join(f'<div style="grid-area:1/1" {_step(_i, _effect)}>{_text}</div>' for _i, _effect, _text in _bullets)
+        + "</div>"
+    )
 
     slide(
         kicker("Smooth by design"),
-        title('Traversal has to feel <span class="dt-y">continuous</span>'),
-        row(
-            col(
-                _figure,
-                f'<div style="font-size:1.6cqw; text-align:center; font-weight:600" {_step(2, cls="dt-y dt-k-caption")}>'
-                "Slider ring width encodes the distance between keyframes</div>",
-                style="flex:1.1",
-            ),
-            col(
-                "<ul>"
-                            "<li><b>Catmull–Rom</b> through the keyframe bases, re-orthonormalized → no direction jumps</li>"
-                "<li><b>Playback</b> moves at constant speed through projection space, paced by geodesic distance on the Grassmannian</li>"
-                "<li><b>Scrubbing</b> gives every keyframe an equal share of the slider, so it moves faster where keyframes are far apart</li>"
-                "</ul>",
-                style="flex:1; justify-content:center",
-            ),
-        ),
+        title('Traversal should feel <span class="dt-y"><i>continuous</i></span>'),
+        '<div class="dt-muted" style="font-size:1.2cqw; display:flex; align-items:center; gap:0.5em">'
+        '<span style="width:0.7em; height:0.7em; border-radius:50%; background:#FEC10E"></span>keyframe projection</div>',
+        _figure,
+        _bullet_row,
     )
+
     return
 
 
