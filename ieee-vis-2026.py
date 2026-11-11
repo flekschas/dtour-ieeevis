@@ -87,29 +87,36 @@ def _(ASSETS, background, kicker, mo, row, slide, title):
 def _(img, kicker, slide, title):
     slide(
         kicker("The problem"),
-        # The punchline fades in on click (reveal.js fragment)
-        title('Understanding high-dimensional data is hard.<br>'
-              '<span class="dt-y fragment" data-fragment-index="1">One 2D projection is not enough.</span>'),
+        title("Understanding high-dimensional data is hard."),
+        '<div style="font-size:1.9cqw">Fashion MNIST: 70K images × 784 pixels, five 2D projections. Which one is <b>faithful</b>?<br>'
+        '<span class="dt-y">Each one hides or distorts some information.</span></div>',
         '<div style="flex:1"></div>',
         img("fmnist-strip-dark.png", "width:100%"),
         '<div class="dt-muted" style="display:grid; grid-template-columns:repeat(5,1fr); text-align:center; font-size:1.2cqw">'
         "<span>PCA</span><span>LE-like</span><span>ForceAtlas2-like</span><span>UMAP-like</span><span>t-SNE-like</span></div>",
+        # The punchline fades in on click (reveal.js fragment)
+        '<div class="dt-h1 dt-y fragment" data-fragment-index="1" style="text-align:center; margin-top:1.2cqw">'
+        "One 2D projection is not enough.</div>",
         '<div style="flex:1"></div>',
-        '<div style="font-size:1.9cqw">Fashion MNIST: 70K images × 784 pixels, five 2D projections. Which one is <b>faithful</b>?<br>'
-        '<span class="dt-y">Each one hides or distorts some information.</span></div>',
     )
     return
 
 
 @app.cell
-def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
+def _(ASSETS, kicker, mo, play_on_fragments, slide):
     import re as _re
 
-    # Build steps (reveal.js fragments): 1 play the guided tour · 2 play the manual tour (guided tour stops)
-    # · 3 cognitive load · 4 dtour unifies the modes · 5 mantra · 6 takeaway
+    # Build steps (reveal.js fragments): 1 freedom-of-traversal axis · 2 cognitive load (the "switch tools"
+    # arrows show from the start) · 3 play the guided tour · 4 play the manual tour (guided tour stops)
+    # · 5 dtour unifies the modes · 6 the cognitive load drops · 7 mantra · 8 takeaway
     def _step(i, effect="", cls=""):
         classes = " ".join(c for c in ("fragment", effect, cls) if c)
         return f'class="{classes}" data-fragment-index="{i}"'
+
+
+    def _swap(effect="", cls=""):
+        """Step 5, dtour takes over: a slow crossfade (.dt-d-swap) instead of reveal's quick default."""
+        return _step(5, effect, f"dt-d-swap {cls}".strip())
 
 
     _Y = "#FEC10E"
@@ -118,7 +125,7 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
         (800, "Guided tour", "a movie along a fixed path", "Zoom &amp; filter", "scrub, select &amp; color"),
         (1370, "Manual tour", "drag axes · full control", "Details on demand", "manual &amp; grand tour"),
     ]
-    # Each box shows its classic tool, cropped to fill the box. When dtour takes over (step 4), the
+    # Each box shows its classic tool, cropped to fill the box. When dtour takes over (step 5), the
     # tools fade out and dtour's take on each mode fades in. Videos start and stop with the build steps.
     def _src(element):
         """The URL marimo serves an asset under, so large media isn't inlined as a data URI."""
@@ -165,32 +172,76 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
     # dtour outline ends 24 below the credits, matching the gap above the mode names.
     _boxes = "".join(
         f'<text x="{x}" y="46" class="dt-d-name">{name}</text>'
-        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_step(4, "fade-out", "dt-d-box")}/>'
-        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_step(4, cls="dt-d-box dt-d-dashed")}/>'
-        + _fill(x, tool, _step(4, "fade-out"))
-        + _fill(x, dtour, _step(4))
+        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_swap("fade-out", "dt-d-box")}/>'
+        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_swap(cls="dt-d-box dt-d-dashed")}/>'
+        + _fill(x, tool, _swap("fade-out"))
+        + _fill(x, dtour, _swap())
         + f'<text x="{x}" y="308" class="dt-d-sub">{sub}</text>'
-        f'<text x="{x}" y="330" {_step(4, "fade-out", "dt-d-credit")}>{credit}</text>'
-        f'<g {_step(5, "fade-up")}><rect x="{x - 200}" y="216" width="400" height="64" rx="14" class="dt-d-mantra"/>'
+        f'<text x="{x}" y="330" {_swap("fade-out", "dt-d-credit")}>{credit}</text>'
+        f'<g {_step(7, "fade-up")}><rect x="{x - 200}" y="216" width="400" height="64" rx="14" class="dt-d-mantra"/>'
         f'<text x="{x}" y="244" class="dt-d-mantra-name">{mantra}</text><text x="{x}" y="270" class="dt-d-mantra-sub">{mantra_sub}</text></g>'
         for (x, name, sub, mantra, mantra_sub), tool, dtour, credit in zip(_modes, _tools, _dtour, _credits)
     )
-    _arrows = "".join(
-        f'<line x1="{x}" y1="171" x2="{x + 140}" y2="171" class="dt-d-arrow" marker-start="url(#dt-d-head)" marker-end="url(#dt-d-head)"/>'
-        for x in (445, 1015)
-    )
-    # Hand-sketched curves (assets/cognitive-load-*.png): illustrative, not data. The dtour sketch keeps a
-    # faint ghost of the "before" curve, so cross-fading the two reads as the old curve stepping back.
-    _CURVE = 'x="0" y="440" width="1600" height="112" preserveAspectRatio="none"'
+    # Two-headed arrows between the modes: grey "switch tools" before dtour, then yellow (no labels)
+    def _arrows(cls, head, note=False):
+        return "".join(
+            f'<line x1="{x}" y1="171" x2="{x + 140}" y2="171" class="{cls}" marker-start="url(#{head})" marker-end="url(#{head})"/>'
+            + (f'<text x="{x + 70}" y="203" class="dt-d-note" text-anchor="middle">switch tools</text>' if note else "")
+            for x in (445, 1015)
+        )
+    # Cognitive-load curves, traced from the hand-drawn sketches (assets/cognitive-load-*.png) in slide
+    # coordinates: illustrative, not data. Both are resampled at the same x positions, so the high curve can
+    # morph into the low one when dtour lowers the load (step 6), leaving a faint ghost of itself behind.
+    _TRACED = {
+        "before": "9,548.0 25,547.3 80,546.6 134,547.0 161,546.1 201,543.8 316,543.7 342,542.4 364,536.4 390,526.4 398,522.6 419,509.6 447,495.5 455,493.4 466,492.5 502,491.9 526,492.9 543,496.5 557,501.1 564,502.5 590,503.3 623,503.3 663,502.0 762,500.9 863,498.6 899,497.0 954,496.1 984,494.2 998,492.5 1011,490.0 1033,484.3 1053,475.1 1103,449.9 1116,445.6 1132,444.1 1162,443.9 1176,445.2 1185,447.2 1214,456.2 1223,458.6 1245,461.9 1272,463.5 1335,464.5 1407,464.0 1456,462.4 1533,461.5 1563,459.9 1590,459.3",
+        "dtour": "9,548.0 100,547.6 265,545.4 368,545.4 405,543.8 422,542.3 488,533.8 528,529.9 650,522.0 748,517.9 811,516.9 1081,516.6 1125,516.0 1202,513.4 1299,505.4 1417,498.4 1477,497.6 1590,498.2",
+    }
+
+
+    def _curve(name, step=6):
+        pts = [tuple(map(float, p.split(","))) for p in _TRACED[name].split()]
+        out, j = [], 0
+        for x in range(9, 1591, 6):
+            while j < len(pts) - 2 and pts[j + 1][0] < x:
+                j += 1
+            (x0, y0), (x1, y1) = pts[j], pts[j + 1]
+            out.append((x, y0 + (y1 - y0) * min(max((x - x0) / (x1 - x0), 0), 1)))
+        return out
+
+
+    def _line_d(pts):
+        return "M" + " L".join(f"{x},{y:.1f}" for x, y in pts)
+
+
+    def _area_d(pts):
+        """Down to the bottom of the curve band (y=552)."""
+        return _line_d(pts) + f" L{pts[-1][0]},552 L{pts[0][0]},552 Z"
+
+
+    _high, _low = _curve("before"), _curve("dtour")
+    _LOAD_CSS = f"""
+      .dt-d-load {{ fill: none; stroke: #d2d2d2; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+        d: path("{_line_d(_high)}"); transition: d 1.6s ease-in-out, stroke 1.6s ease-in-out; }}
+      .dt-d-area {{ fill: #fff; fill-opacity: 0.15; d: path("{_area_d(_high)}");
+        transition: d 1.6s ease-in-out, fill 1.6s ease-in-out; }}
+      .dt-d-ghost {{ fill: none; stroke: #d2d2d2; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }}
+      svg:has(.dt-d-low.visible) .dt-d-load {{ d: path("{_line_d(_low)}"); stroke: {_Y}; }}
+      svg:has(.dt-d-low.visible) .dt-d-area {{ d: path("{_area_d(_low)}"); fill: {_Y}; }}
+      .reveal .slides section .fragment.dt-d-ghost.visible {{ opacity: 0.25; }}"""
 
     _diagram = f"""<svg viewBox="0 -45 1600 640" style="width:100%; flex:none; overflow:visible" font-family="inherit">
     <style>
       .dt-d-name {{ fill: #fff; font-size: 30px; font-weight: 800; text-anchor: middle; }}
       .dt-d-sub {{ fill: #A9A9A9; font-size: 22px; text-anchor: middle; }}
       .dt-d-box {{ fill: #161616; stroke: #555; stroke-width: 2; }}
-      .dt-d-dashed {{ fill: none; stroke: #888; stroke-dasharray: 10 8; }}
+      .dt-d-dashed {{ fill: none; stroke: {_Y}; stroke-dasharray: 10 8; }}
       .dt-d-arrow {{ stroke: #888; stroke-width: 2.5; }}
-      .dt-d-dtour {{ fill: none; stroke: {_Y}; stroke-width: 3; }}
+      .dt-d-arrow-y {{ stroke: {_Y}; stroke-width: 2.5; }}
+      .dt-d-dtour {{ fill: none; stroke: {_Y}; stroke-width: 3; stroke-dasharray: 1 1; stroke-dashoffset: 1;
+        transition: stroke-dashoffset 1.6s ease-in-out; }}
+      /* The dtour outline draws itself around the three modes */
+      .visible > .dt-d-dtour {{ stroke-dashoffset: 0; }}
+      .reveal .slides section .fragment.dt-d-swap {{ transition: opacity 1s ease-in-out, visibility 1s; }}
       .dt-d-mantra {{ fill: #2a2410; stroke: {_Y}; stroke-width: 1.5; }}
       .dt-d-mantra-name {{ fill: {_Y}; font-size: 22px; font-weight: 800; text-anchor: middle; }}
       .dt-d-mantra-sub {{ fill: #ccc; font-size: 18px; text-anchor: middle; }}
@@ -198,24 +249,29 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
       .dt-d-label {{ fill: #fff; font-size: 26px; }}
       .dt-d-credit {{ fill: #777; font-size: 15px; text-anchor: middle; }}
       .dt-d-note {{ fill: #A9A9A9; font-size: 20px; font-style: italic; }}
+      {_LOAD_CSS}
     </style>
     <defs>
       <marker id="dt-d-head" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#888"/></marker>
+      <marker id="dt-d-head-y" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="{_Y}"/></marker>
       <marker id="dt-d-axis-head" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#bbb"/></marker>
     </defs>
-    <g {_step(4)}><rect x="1.5" y="0" width="1597" height="354" rx="20" class="dt-d-dtour"/>
+    <g {_swap()}><rect x="1.5" y="0" width="1597" height="354" rx="20" pathLength="1" class="dt-d-dtour"/>
       <text x="0" y="-12" fill="{_Y}" font-size="30" font-weight="800">dtour</text></g>
-    <g {_step(1, cls="dt-play-1")}></g><g {_step(2, cls="dt-play-2")}></g><g {_step(4, cls="dt-play-dtour")}></g>
+    <g {_step(3, cls="dt-play-1")}></g><g {_step(4, cls="dt-play-2")}></g><g {_swap(cls="dt-play-dtour")}></g>
     {_boxes}
-    <g {_step(4, "fade-out")}>{_arrows}</g>
-    <line x1="0" y1="389" x2="1590" y2="389" class="dt-d-axis" marker-end="url(#dt-d-axis-head)"/>
-    <text x="0" y="422" class="dt-d-label">None</text>
-    <text x="800" y="422" class="dt-d-label" text-anchor="middle" font-weight="800">Freedom of traversal</text>
-    <text x="1600" y="422" class="dt-d-label" text-anchor="end">Complete</text>
-    <g {_step(3)}>
-      <g {_step(4, "fade-out")}><image href="{data_uri("cognitive-load-before.png")}" {_CURVE}/>
-        <text x="305" y="520" class="dt-d-note" text-anchor="end">switch tools</text><text x="945" y="479" class="dt-d-note" text-anchor="end">switch tools</text></g>
-      <g {_step(4)}><image href="{data_uri("cognitive-load-dtour.png")}" {_CURVE}/></g>
+    <g {_step(1)}>
+      <line x1="0" y1="389" x2="1590" y2="389" class="dt-d-axis" marker-end="url(#dt-d-axis-head)"/>
+      <text x="0" y="422" class="dt-d-label">None</text>
+      <text x="800" y="422" class="dt-d-label" text-anchor="middle" font-weight="800">Freedom of traversal</text>
+      <text x="1600" y="422" class="dt-d-label" text-anchor="end">Complete</text>
+    </g>
+    <g {_swap("fade-out")}>{_arrows("dt-d-arrow", "dt-d-head", note=True)}</g>
+    <g {_swap()}>{_arrows("dt-d-arrow-y", "dt-d-head-y")}</g>
+    <g {_step(2)}>
+      <g {_step(6, cls="dt-d-low")}></g>
+      <path d="{_line_d(_high)}" {_step(6, cls="dt-d-ghost")}/>
+      <path class="dt-d-area"/><path class="dt-d-load"/>
       <text x="0" y="585" class="dt-d-label">Low</text>
       <text x="800" y="585" class="dt-d-label" text-anchor="middle" font-weight="800">Cognitive load</text>
       <text x="1600" y="585" class="dt-d-label" text-anchor="end">High</text>
@@ -226,13 +282,13 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
         play_on_fragments(),
         kicker("Touring many projections"),
         '<div style="display:grid">'
-        f'<div style="grid-area:1/1" {_step(4, "fade-out", "dt-h1")}>Use <span class="dt-y">many</span> projections! But how?</div>'
-        f'<div style="grid-area:1/1" {_step(4, cls="dt-h1")}>dtour: <span class="dt-y">one</span> interface across all modes</div>'
+        f'<div style="grid-area:1/1" {_swap("fade-out", "dt-h1")}>Use <span class="dt-y">many</span> projections! But how?</div>'
+        f'<div style="grid-area:1/1" {_swap(cls="dt-h1")}>dtour: <span class="dt-y">one</span> interface across all modes</div>'
         "</div>",
         _diagram,
         '<div style="flex:1"></div>',
-        f'<div style="font-size:1.7cqw" {_step(6)}>Every mode shift is animated, so you never lose track of your points '
-        '<span class="dt-muted">(object constancy)</span>. <span class="dt-y">Move freely between modes.</span></div>',
+        f'<div style="font-size:1.7cqw; text-align:center" {_step(8)}><span class="dt-y">Move freely between modes:</span> every shift is animated, so you never lose track of your points '
+        '<span class="dt-muted">(object constancy)</span>.</div>',
     )
     return
 
@@ -247,8 +303,8 @@ def _(slide):
     return
 
 
-@app.cell
-def _(col, kicker, row, slide, title):
+@app.cell(expand_output=True)
+def _(kicker, slide, title):
     import math as _math
 
 
@@ -267,25 +323,34 @@ def _(col, kicker, row, slide, title):
         return [*out, pts[-1]]
 
 
-    # Keyframes deliberately unevenly spaced. Build steps (reveal.js fragments):
-    # 1 drop the C⁰ path and captions, then bend the spline into the slider ring (keyframes at their
-    # arc length; the tour loops, so a closing segment grows out of the last keyframe) · 2 space
-    # keyframes equally, so each segment's width shows how much it was squeezed, then the takeaway
-    _STEPS, _OFFSET, _CENTER, _RADIUS = 24, 125, (100, 125), 78
-    _keyframes = [(12, 72), (24, 50), (130, 78), (142, 22), (192, 60)]
+    # Keyframes deliberately unevenly spaced. One bullet at a time along the bottom; build steps (reveal.js fragments):
+    # 0 the C⁰ path (straight segments) in the center · 1 the segments bend into the Catmull–Rom spline
+    # · 2 the spline bends into the slider ring (keyframes at their arc length; the tour loops, so a
+    # closing segment grows out of the last keyframe) · 3 space keyframes equally, so each segment's width
+    # shows how much it was squeezed · 4 a marker plays the tour: constant speed in projection space, so it
+    # lingers on wide segments · 5 the marker scrubs instead: constant speed around the slider
+    _STEPS, _LAP = 24, 8  # _LAP: seconds per loop of the marker
+    _CENTER, _RADIUS = (240, 90), 78
+    _AT = (138, 20)  # where the keyframe path sits, centered on the ring
+    _keyframes = [(x, 1.4 * y) for x, y in [(12, 72), (24, 50), (130, 78), (142, 22), (192, 60)]]  # stretched to fill the height
     _k = len(_keyframes)
-    _spline = [(x, y + _OFFSET) for x, y in _catmull_rom(_keyframes, _STEPS)]
+
+
+    def _at(points, offset):
+        return [(x + offset[0], y + offset[1]) for x, y in points]
+
+
+    _spline = _at(_catmull_rom(_keyframes, _STEPS), _AT)
     _segments = [_spline[i * _STEPS : (i + 1) * _STEPS + 1] for i in range(_k - 1)]
     # Closing segment (last → first keyframe), with the tangents of a closed Catmull–Rom loop
     _p0, _p1, _p2, _p3 = (_keyframes[i] for i in (-2, -1, 0, 1))
-    _segments.append([
+    _segments.append(_at([
         tuple(
             0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t**2 + (-a + 3 * b - 3 * c + d) * t**3)
-            + (_OFFSET if axis else 0)
-            for axis, (a, b, c, d) in enumerate(zip(_p0, _p1, _p2, _p3))
+            for a, b, c, d in zip(_p0, _p1, _p2, _p3)
         )
         for t in (s / _STEPS for s in range(_STEPS + 1))
-    ])
+    ], _AT))
     _lengths = [sum(_math.dist(a, b) for a, b in zip(seg, seg[1:])) for seg in _segments]
     _total = sum(_lengths)
 
@@ -301,10 +366,15 @@ def _(col, kicker, row, slide, title):
         for a, b in zip(seg, seg[1:]):
             walked.append(walked[-1] + _math.dist(a, b))
         # The open path has no closing segment yet: it starts collapsed onto the last keyframe
-        path = [seg[0]] * len(seg) if i == _k - 1 else seg
+        if i == _k - 1:
+            c0 = path = [seg[0]] * len(seg)
+        else:
+            (x0, y0), (x1, y1) = seg[0], seg[-1]
+            c0 = [(x0 + (x1 - x0) * s / _STEPS, y0 + (y1 - y0) * s / _STEPS) for s in range(_STEPS + 1)]  # straight
+            path = seg
         ring = [_on_ring((start + s) / _total) for s in walked]  # arc-length spacing
         equal = [_on_ring((i + s / _lengths[i]) / _k) for s in walked]  # equal spacing
-        return path, ring, equal
+        return c0, path, ring, equal
 
 
     def _d(points):
@@ -312,29 +382,40 @@ def _(col, kicker, row, slide, title):
 
 
     _dot_states = [
-        [(x, y + _OFFSET) for x, y in _keyframes],
+        _at(_keyframes, _AT),
+        _at(_keyframes, _AT),
         [_on_ring(sum(_lengths[:j]) / _total) for j in range(_k)],
         [_on_ring(j / _k) for j in range(_k)],
     ]
     _css = [
         ".dt-k-seg { fill: none; stroke: #fff; stroke-width: 2.2; transition: d 1.2s ease-in-out, stroke-width 1.2s ease-in-out; }",
         ".dt-k-dot { fill: #FEC10E; transition: cx 1.2s ease-in-out, cy 1.2s ease-in-out; }",
-        ".reveal .slides section .fragment.dt-k-caption.visible { transition-delay: 1.2s; }",
+        # The ring-width bullet waits for the equal spacing to settle
+        ".reveal .slides section .fragment.dt-k-width.current-fragment { transition-delay: 1.2s; }",
+        # Position marker, rotated about the ring center (it sits at the top of the ring)
+        f".dt-k-marker {{ opacity: 0; transform-origin: {_CENTER[0]}px {_CENTER[1]}px; transition: opacity 0.4s; }}",
+        f".dt-slide:has(.dt-k-play.visible) .dt-k-marker {{ opacity: 1; animation: dt-k-play {_LAP}s linear infinite; }}",
+        f".dt-slide:has(.dt-k-scrub.visible) .dt-k-marker {{ animation: dt-k-scrub {_LAP}s linear infinite; }}",
+        # Playback: each segment takes time proportional to its length but gets an equal 1/k of the ring
+        "@keyframes dt-k-play { "
+        + " ".join(f"{100 * sum(_lengths[:j]) / _total:.2f}% {{ transform: rotate({360 * j / _k:.2f}deg); }}" for j in range(_k + 1))
+        + " }",
+        "@keyframes dt-k-scrub { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
+        # Play / hand icon in the ring's center, shown with the matching marker animation
+        ".dt-k-icon { opacity: 0; transition: opacity 0.4s; }",
+        ".dt-slide:has(.dt-k-play.visible) .dt-k-icon-play { opacity: 1; }",
+        ".dt-slide:has(.dt-k-scrub.visible) .dt-k-icon-play { opacity: 0; }",
+        ".dt-slide:has(.dt-k-scrub.visible) .dt-k-icon-scrub { opacity: 1; }",
     ]
-    _states = [
-        ("", ""),
-        # Starts on its own once the C⁰ path has faded out
-        ("svg:has(.dt-k-ring.visible) ", " transition-delay: 0.4s;"),
-        ("svg:has(.dt-k-equal.visible) ", " transition-delay: 0s;"),
-    ]
-    for _state, (_marker, _delay) in enumerate(_states):
+    _states = ["", "svg:has(.dt-k-cr.visible) ", "svg:has(.dt-k-ring.visible) ", "svg:has(.dt-k-equal.visible) "]
+    for _state, _marker in enumerate(_states):
         for _i in range(_k):
             # Equal spacing squeezes long segments (thicker) and stretches short ones (thinner),
             # with width proportional to length like dtour's slider ring
-            _width = f" stroke-width: {max(0.5, 2.4 * _lengths[_i] * _k / _total):.2f};" if _state == 2 else ""
-            _css.append(f"{_marker}.dt-k-seg-{_i} {{ d: {_d(_seg_states(_i)[_state])};{_width}{_delay} }}")
+            _width = f" stroke-width: {max(0.5, 2.4 * _lengths[_i] * _k / _total):.2f};" if _state == 3 else ""
+            _css.append(f"{_marker}.dt-k-seg-{_i} {{ d: {_d(_seg_states(_i)[_state])};{_width} }}")
         for _j, (_x, _y) in enumerate(_dot_states[_state]):
-            _css.append(f"{_marker}.dt-k-dot-{_j} {{ cx: {_x:.2f}px; cy: {_y:.2f}px;{_delay} }}")
+            _css.append(f"{_marker}.dt-k-dot-{_j} {{ cx: {_x:.2f}px; cy: {_y:.2f}px; }}")
 
 
     def _step(i, effect="", cls=""):
@@ -342,40 +423,73 @@ def _(col, kicker, row, slide, title):
         return f'class="{classes}" data-fragment-index="{i}"'
 
 
-    _c0 = "M" + " L".join(f"{x},{y}" for x, y in _keyframes)
-    _figure = f"""<svg viewBox="0 0 200 250" style="width:100%; flex:1; min-height:0" font-family="inherit">
+    def _caption(text, x, *attrs):
+        return f'<text x="{x}" y="155" fill="#A9A9A9" font-size="8" text-anchor="middle" {" ".join(attrs)}>{text}</text>'
+
+
+    def _heading(text, x):
+        return f'<text x="{x}" y="34" fill="#fff" font-size="9" font-weight="600" text-anchor="middle">{text}</text>'
+
+
+    # 24×24 icons (Lucide, ISC license), drawn at _ICON units in the ring's center
+    _ICON = 34
+    _HAND = (
+        '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>'
+        '<path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>'
+        '<path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>'
+        '<path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.83L7 15"/>'
+    )
+
+
+    def _icon(cls, shapes):
+        x, y, s = _CENTER[0] - _ICON / 2, _CENTER[1] - _ICON / 2, _ICON / 24
+        return (
+            f'<g class="dt-k-icon {cls}" transform="translate({x} {y}) scale({s})" fill="none" stroke="#fff" '
+            f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{shapes}</g>'
+        )
+
+
+    _figure = f"""<svg viewBox="0 0 480 180" style="width:100%; flex:1; min-height:0" font-family="inherit">
     <style>{chr(10).join(_css)}</style>
-    <g {_step(1, cls="dt-k-ring")}></g><g {_step(2, cls="dt-k-equal")}></g>
+    <g {_step(1, cls="dt-k-cr")}></g><g {_step(2, cls="dt-k-ring")}></g><g {_step(3, cls="dt-k-equal")}></g>
     <g {_step(1, "fade-out")}>
-      <path d="{_c0}" fill="none" stroke="#fff" stroke-width="2.2"/>
-      {"".join(f'<circle cx="{x}" cy="{y}" r="3.2" fill="#FEC10E"/>' for x, y in _keyframes)}
-      <text x="100" y="104" fill="#A9A9A9" font-size="8" text-anchor="middle">piecewise geodesic: C⁰, kinks at every keyframe</text>
+      {_heading("Piecewise geodesic: C⁰", _CENTER[0])}
+      {_caption("jumps abruptly at every keyframe", _CENTER[0])}
     </g>
     {"".join(f'<path class="dt-k-seg dt-k-seg-{i}"/>' for i in range(_k))}
     {"".join(f'<circle class="dt-k-dot dt-k-dot-{j}" r="3.2"/>' for j in range(_k))}
-    <text x="100" y="229" fill="#A9A9A9" font-size="8" text-anchor="middle" {_step(1, "fade-out")}>Catmull–Rom on frames + Gram–Schmidt: C¹, hits every keyframe</text>
+    {_icon("dt-k-icon-play", '<path d="M6 3 L20 12 L6 21 Z"/>')}
+    {_icon("dt-k-icon-scrub", _HAND)}
+    <circle class="dt-k-marker" cx="{_CENTER[0]}" cy="{_CENTER[1] - _RADIUS}" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <g {_step(1, "fade-in-then-out")}>
+      {_heading("Catmull–Rom interpolation + Gram–Schmidt: C¹", _CENTER[0])}
+      {_caption("visits every keyframe smoothly", _CENTER[0])}
+    </g>
     </svg>"""
+
+    # One bullet per build step, stacked in the same grid cell: (step, fragment effect and classes, text)
+    _bullets = [
+        (1, "fade-in-then-out", "<span class='dt-y'><b>Catmull–Rom</b></span> through the keyframe bases, re-orthonormalized → no direction jumps"),
+        (2, "fade-in-then-out", "<span class='dt-y'><b>Closed loop:</b></span> the guided path wraps from the last keyframe back to the first"),
+        (3, "fade-in-then-out dt-k-width", "<span class='dt-y'><b>Slider ring:</b></span> arc width encodes the geodesic distance between keyframes"),
+        (4, "fade-in-then-out dt-k-play", "<span class='dt-y'><b>Playback</b></span> is paced by geodesic distance: it travels through projection space at constant speed"),
+        (5, "dt-k-scrub", "<span class='dt-y'><b>Scrubbing</b></span> gives each keyframe equal share: it travels faster when keyframes are far apart"),
+    ]
+    _bullet_row = (
+        '<div style="display:grid; text-align:center; min-height:2.8em; align-items:center; padding:0 6cqw">'
+        + "".join(f'<div style="grid-area:1/1" {_step(_i, _effect)}>{_text}</div>' for _i, _effect, _text in _bullets)
+        + "</div>"
+    )
 
     slide(
         kicker("Smooth by design"),
-        title('Traversal has to feel <span class="dt-y">continuous</span>'),
-        row(
-            col(
-                _figure,
-                f'<div style="font-size:1.6cqw; text-align:center; font-weight:600" {_step(2, cls="dt-y dt-k-caption")}>'
-                "Slider ring width encodes the distance between keyframes</div>",
-                style="flex:1.1",
-            ),
-            col(
-                "<ul>"
-                            "<li><b>Catmull–Rom</b> through the keyframe bases, re-orthonormalized → no direction jumps</li>"
-                "<li><b>Playback</b> moves at constant speed through projection space, paced by geodesic distance on the Grassmannian</li>"
-                "<li><b>Scrubbing</b> gives every keyframe an equal share of the slider, so it moves faster where keyframes are far apart</li>"
-                "</ul>",
-                style="flex:1; justify-content:center",
-            ),
-        ),
+        title('Traversal should feel <span class="dt-y"><i>continuous</i></span>'),
+        '<div class="dt-muted" style="font-size:1.2cqw; display:flex; align-items:center; gap:0.5em">'
+        '<span style="width:0.7em; height:0.7em; border-radius:50%; background:#FEC10E"></span>keyframe projection</div>',
+        _figure,
+        _bullet_row,
     )
+
     return
 
 
@@ -441,8 +555,7 @@ def _(kicker, slide):
         kicker("Thank you"),
         '<div style="flex:1"></div>',
         # Smaller than a regular title (3.8cqw), so the tagline fits on one line
-        '<div class="dt-h1" style="font-size:2.75cqw">A high-dim tour a day keeps the '
-        'curse of dimensionality away…</div>',
+        '<div class="dt-h1" style="font-size:2.75cqw">Take a tour. Enjoy the view!</div>',
         '<div style="font-size:2.4cqw; line-height:1.6; margin-top:2.4cqw">'
         '<b class="dt-y">dtour.dev</b>&ensp;·&ensp;github.com/flekschas/dtour<br>'
         '<span class="dt-muted">pip install dtour · Jupyter, marimo, React</span></div>',
