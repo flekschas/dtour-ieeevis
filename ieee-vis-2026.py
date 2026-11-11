@@ -103,14 +103,20 @@ def _(img, kicker, slide, title):
 
 
 @app.cell
-def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
+def _(ASSETS, kicker, mo, play_on_fragments, slide):
     import re as _re
 
-    # Build steps (reveal.js fragments): 1 play the guided tour · 2 play the manual tour (guided tour stops)
-    # · 3 cognitive load · 4 dtour unifies the modes · 5 mantra · 6 takeaway
+    # Build steps (reveal.js fragments): 1 freedom-of-traversal axis · 2 cognitive load (the "switch tools"
+    # arrows show from the start) · 3 play the guided tour · 4 play the manual tour (guided tour stops)
+    # · 5 dtour unifies the modes · 6 the cognitive load drops · 7 mantra · 8 takeaway
     def _step(i, effect="", cls=""):
         classes = " ".join(c for c in ("fragment", effect, cls) if c)
         return f'class="{classes}" data-fragment-index="{i}"'
+
+
+    def _swap(effect="", cls=""):
+        """Step 5, dtour takes over: a slow crossfade (.dt-d-swap) instead of reveal's quick default."""
+        return _step(5, effect, f"dt-d-swap {cls}".strip())
 
 
     _Y = "#FEC10E"
@@ -119,7 +125,7 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
         (800, "Guided tour", "a movie along a fixed path", "Zoom &amp; filter", "scrub, select &amp; color"),
         (1370, "Manual tour", "drag axes · full control", "Details on demand", "manual &amp; grand tour"),
     ]
-    # Each box shows its classic tool, cropped to fill the box. When dtour takes over (step 4), the
+    # Each box shows its classic tool, cropped to fill the box. When dtour takes over (step 5), the
     # tools fade out and dtour's take on each mode fades in. Videos start and stop with the build steps.
     def _src(element):
         """The URL marimo serves an asset under, so large media isn't inlined as a data URI."""
@@ -166,32 +172,76 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
     # dtour outline ends 24 below the credits, matching the gap above the mode names.
     _boxes = "".join(
         f'<text x="{x}" y="46" class="dt-d-name">{name}</text>'
-        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_step(4, "fade-out", "dt-d-box")}/>'
-        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_step(4, cls="dt-d-box dt-d-dashed")}/>'
-        + _fill(x, tool, _step(4, "fade-out"))
-        + _fill(x, dtour, _step(4))
+        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_swap("fade-out", "dt-d-box")}/>'
+        f'<rect x="{x - 200}" y="62" width="400" height="218" rx="14" {_swap(cls="dt-d-box dt-d-dashed")}/>'
+        + _fill(x, tool, _swap("fade-out"))
+        + _fill(x, dtour, _swap())
         + f'<text x="{x}" y="308" class="dt-d-sub">{sub}</text>'
-        f'<text x="{x}" y="330" {_step(4, "fade-out", "dt-d-credit")}>{credit}</text>'
-        f'<g {_step(5, "fade-up")}><rect x="{x - 200}" y="216" width="400" height="64" rx="14" class="dt-d-mantra"/>'
+        f'<text x="{x}" y="330" {_swap("fade-out", "dt-d-credit")}>{credit}</text>'
+        f'<g {_step(7, "fade-up")}><rect x="{x - 200}" y="216" width="400" height="64" rx="14" class="dt-d-mantra"/>'
         f'<text x="{x}" y="244" class="dt-d-mantra-name">{mantra}</text><text x="{x}" y="270" class="dt-d-mantra-sub">{mantra_sub}</text></g>'
         for (x, name, sub, mantra, mantra_sub), tool, dtour, credit in zip(_modes, _tools, _dtour, _credits)
     )
-    _arrows = "".join(
-        f'<line x1="{x}" y1="171" x2="{x + 140}" y2="171" class="dt-d-arrow" marker-start="url(#dt-d-head)" marker-end="url(#dt-d-head)"/>'
-        for x in (445, 1015)
-    )
-    # Hand-sketched curves (assets/cognitive-load-*.png): illustrative, not data. The dtour sketch keeps a
-    # faint ghost of the "before" curve, so cross-fading the two reads as the old curve stepping back.
-    _CURVE = 'x="0" y="440" width="1600" height="112" preserveAspectRatio="none"'
+    # Two-headed arrows between the modes: grey "switch tools" before dtour, then yellow (no labels)
+    def _arrows(cls, head, note=False):
+        return "".join(
+            f'<line x1="{x}" y1="171" x2="{x + 140}" y2="171" class="{cls}" marker-start="url(#{head})" marker-end="url(#{head})"/>'
+            + (f'<text x="{x + 70}" y="203" class="dt-d-note" text-anchor="middle">switch tools</text>' if note else "")
+            for x in (445, 1015)
+        )
+    # Cognitive-load curves, traced from the hand-drawn sketches (assets/cognitive-load-*.png) in slide
+    # coordinates: illustrative, not data. Both are resampled at the same x positions, so the high curve can
+    # morph into the low one when dtour lowers the load (step 6), leaving a faint ghost of itself behind.
+    _TRACED = {
+        "before": "9,548.0 25,547.3 80,546.6 134,547.0 161,546.1 201,543.8 316,543.7 342,542.4 364,536.4 390,526.4 398,522.6 419,509.6 447,495.5 455,493.4 466,492.5 502,491.9 526,492.9 543,496.5 557,501.1 564,502.5 590,503.3 623,503.3 663,502.0 762,500.9 863,498.6 899,497.0 954,496.1 984,494.2 998,492.5 1011,490.0 1033,484.3 1053,475.1 1103,449.9 1116,445.6 1132,444.1 1162,443.9 1176,445.2 1185,447.2 1214,456.2 1223,458.6 1245,461.9 1272,463.5 1335,464.5 1407,464.0 1456,462.4 1533,461.5 1563,459.9 1590,459.3",
+        "dtour": "9,548.0 100,547.6 265,545.4 368,545.4 405,543.8 422,542.3 488,533.8 528,529.9 650,522.0 748,517.9 811,516.9 1081,516.6 1125,516.0 1202,513.4 1299,505.4 1417,498.4 1477,497.6 1590,498.2",
+    }
+
+
+    def _curve(name, step=6):
+        pts = [tuple(map(float, p.split(","))) for p in _TRACED[name].split()]
+        out, j = [], 0
+        for x in range(9, 1591, 6):
+            while j < len(pts) - 2 and pts[j + 1][0] < x:
+                j += 1
+            (x0, y0), (x1, y1) = pts[j], pts[j + 1]
+            out.append((x, y0 + (y1 - y0) * min(max((x - x0) / (x1 - x0), 0), 1)))
+        return out
+
+
+    def _line_d(pts):
+        return "M" + " L".join(f"{x},{y:.1f}" for x, y in pts)
+
+
+    def _area_d(pts):
+        """Down to the bottom of the curve band (y=552)."""
+        return _line_d(pts) + f" L{pts[-1][0]},552 L{pts[0][0]},552 Z"
+
+
+    _high, _low = _curve("before"), _curve("dtour")
+    _LOAD_CSS = f"""
+      .dt-d-load {{ fill: none; stroke: #d2d2d2; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+        d: path("{_line_d(_high)}"); transition: d 1.6s ease-in-out, stroke 1.6s ease-in-out; }}
+      .dt-d-area {{ fill: #fff; fill-opacity: 0.15; d: path("{_area_d(_high)}");
+        transition: d 1.6s ease-in-out, fill 1.6s ease-in-out; }}
+      .dt-d-ghost {{ fill: none; stroke: #d2d2d2; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }}
+      svg:has(.dt-d-low.visible) .dt-d-load {{ d: path("{_line_d(_low)}"); stroke: {_Y}; }}
+      svg:has(.dt-d-low.visible) .dt-d-area {{ d: path("{_area_d(_low)}"); fill: {_Y}; }}
+      .reveal .slides section .fragment.dt-d-ghost.visible {{ opacity: 0.25; }}"""
 
     _diagram = f"""<svg viewBox="0 -45 1600 640" style="width:100%; flex:none; overflow:visible" font-family="inherit">
     <style>
       .dt-d-name {{ fill: #fff; font-size: 30px; font-weight: 800; text-anchor: middle; }}
       .dt-d-sub {{ fill: #A9A9A9; font-size: 22px; text-anchor: middle; }}
       .dt-d-box {{ fill: #161616; stroke: #555; stroke-width: 2; }}
-      .dt-d-dashed {{ fill: none; stroke: #888; stroke-dasharray: 10 8; }}
+      .dt-d-dashed {{ fill: none; stroke: {_Y}; stroke-dasharray: 10 8; }}
       .dt-d-arrow {{ stroke: #888; stroke-width: 2.5; }}
-      .dt-d-dtour {{ fill: none; stroke: {_Y}; stroke-width: 3; }}
+      .dt-d-arrow-y {{ stroke: {_Y}; stroke-width: 2.5; }}
+      .dt-d-dtour {{ fill: none; stroke: {_Y}; stroke-width: 3; stroke-dasharray: 1 1; stroke-dashoffset: 1;
+        transition: stroke-dashoffset 1.6s ease-in-out; }}
+      /* The dtour outline draws itself around the three modes */
+      .visible > .dt-d-dtour {{ stroke-dashoffset: 0; }}
+      .reveal .slides section .fragment.dt-d-swap {{ transition: opacity 1s ease-in-out, visibility 1s; }}
       .dt-d-mantra {{ fill: #2a2410; stroke: {_Y}; stroke-width: 1.5; }}
       .dt-d-mantra-name {{ fill: {_Y}; font-size: 22px; font-weight: 800; text-anchor: middle; }}
       .dt-d-mantra-sub {{ fill: #ccc; font-size: 18px; text-anchor: middle; }}
@@ -199,24 +249,29 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
       .dt-d-label {{ fill: #fff; font-size: 26px; }}
       .dt-d-credit {{ fill: #777; font-size: 15px; text-anchor: middle; }}
       .dt-d-note {{ fill: #A9A9A9; font-size: 20px; font-style: italic; }}
+      {_LOAD_CSS}
     </style>
     <defs>
       <marker id="dt-d-head" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#888"/></marker>
+      <marker id="dt-d-head-y" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="{_Y}"/></marker>
       <marker id="dt-d-axis-head" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#bbb"/></marker>
     </defs>
-    <g {_step(4)}><rect x="1.5" y="0" width="1597" height="354" rx="20" class="dt-d-dtour"/>
+    <g {_swap()}><rect x="1.5" y="0" width="1597" height="354" rx="20" pathLength="1" class="dt-d-dtour"/>
       <text x="0" y="-12" fill="{_Y}" font-size="30" font-weight="800">dtour</text></g>
-    <g {_step(1, cls="dt-play-1")}></g><g {_step(2, cls="dt-play-2")}></g><g {_step(4, cls="dt-play-dtour")}></g>
+    <g {_step(3, cls="dt-play-1")}></g><g {_step(4, cls="dt-play-2")}></g><g {_swap(cls="dt-play-dtour")}></g>
     {_boxes}
-    <g {_step(4, "fade-out")}>{_arrows}</g>
-    <line x1="0" y1="389" x2="1590" y2="389" class="dt-d-axis" marker-end="url(#dt-d-axis-head)"/>
-    <text x="0" y="422" class="dt-d-label">None</text>
-    <text x="800" y="422" class="dt-d-label" text-anchor="middle" font-weight="800">Freedom of traversal</text>
-    <text x="1600" y="422" class="dt-d-label" text-anchor="end">Complete</text>
-    <g {_step(3)}>
-      <g {_step(4, "fade-out")}><image href="{data_uri("cognitive-load-before.png")}" {_CURVE}/>
-        <text x="305" y="520" class="dt-d-note" text-anchor="end">switch tools</text><text x="945" y="479" class="dt-d-note" text-anchor="end">switch tools</text></g>
-      <g {_step(4)}><image href="{data_uri("cognitive-load-dtour.png")}" {_CURVE}/></g>
+    <g {_step(1)}>
+      <line x1="0" y1="389" x2="1590" y2="389" class="dt-d-axis" marker-end="url(#dt-d-axis-head)"/>
+      <text x="0" y="422" class="dt-d-label">None</text>
+      <text x="800" y="422" class="dt-d-label" text-anchor="middle" font-weight="800">Freedom of traversal</text>
+      <text x="1600" y="422" class="dt-d-label" text-anchor="end">Complete</text>
+    </g>
+    <g {_swap("fade-out")}>{_arrows("dt-d-arrow", "dt-d-head", note=True)}</g>
+    <g {_swap()}>{_arrows("dt-d-arrow-y", "dt-d-head-y")}</g>
+    <g {_step(2)}>
+      <g {_step(6, cls="dt-d-low")}></g>
+      <path d="{_line_d(_high)}" {_step(6, cls="dt-d-ghost")}/>
+      <path class="dt-d-area"/><path class="dt-d-load"/>
       <text x="0" y="585" class="dt-d-label">Low</text>
       <text x="800" y="585" class="dt-d-label" text-anchor="middle" font-weight="800">Cognitive load</text>
       <text x="1600" y="585" class="dt-d-label" text-anchor="end">High</text>
@@ -227,13 +282,13 @@ def _(ASSETS, data_uri, kicker, mo, play_on_fragments, slide):
         play_on_fragments(),
         kicker("Touring many projections"),
         '<div style="display:grid">'
-        f'<div style="grid-area:1/1" {_step(4, "fade-out", "dt-h1")}>Use <span class="dt-y">many</span> projections! But how?</div>'
-        f'<div style="grid-area:1/1" {_step(4, cls="dt-h1")}>dtour: <span class="dt-y">one</span> interface across all modes</div>'
+        f'<div style="grid-area:1/1" {_swap("fade-out", "dt-h1")}>Use <span class="dt-y">many</span> projections! But how?</div>'
+        f'<div style="grid-area:1/1" {_swap(cls="dt-h1")}>dtour: <span class="dt-y">one</span> interface across all modes</div>'
         "</div>",
         _diagram,
         '<div style="flex:1"></div>',
-        f'<div style="font-size:1.7cqw" {_step(6)}>Every mode shift is animated, so you never lose track of your points '
-        '<span class="dt-muted">(object constancy)</span>. <span class="dt-y">Move freely between modes.</span></div>',
+        f'<div style="font-size:1.7cqw; text-align:center" {_step(8)}><span class="dt-y">Move freely between modes:</span> every shift is animated, so you never lose track of your points '
+        '<span class="dt-muted">(object constancy)</span>.</div>',
     )
     return
 
