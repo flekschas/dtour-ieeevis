@@ -500,8 +500,7 @@ def _(kicker, slide):
         kicker("Thank you"),
         '<div style="flex:1"></div>',
         # Smaller than a regular title (3.8cqw), so the tagline fits on one line
-        '<div class="dt-h1" style="font-size:2.75cqw">A high-dim tour a day keeps the '
-        'curse of dimensionality away…</div>',
+        '<div class="dt-h1" style="font-size:2.75cqw">Take a tour. Enjoy the view!</div>',
         '<div style="font-size:2.4cqw; line-height:1.6; margin-top:2.4cqw">'
         '<b class="dt-y">dtour.dev</b>&ensp;·&ensp;github.com/flekschas/dtour<br>'
         '<span class="dt-muted">pip install dtour · Jupyter, marimo, React</span></div>',
