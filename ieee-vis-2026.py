@@ -494,37 +494,168 @@ def _(kicker, slide, title):
 
 
 @app.cell
-def _(col, kicker, row, slide, title):
+def _(kicker, row, slide, title):
+    import math as _m
+    import random as _random
+
+    _Y = "#FEC10E"
+    _HUES = ["#8ab4f8", "#f28b82", "#81c995"]
+    _rng = _random.Random(7)
+
+
+    def _add(*vs):
+        return tuple(map(sum, zip(*vs)))
+
+
+    def _mul(a, s):
+        return tuple(x * s for x in a)
+
+
+    def _dot(a, b):
+        return sum(x * y for x, y in zip(a, b))
+
+
+    def _cross(a, b):
+        return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
+    def _unit(a):
+        return _mul(a, 1 / _m.sqrt(_dot(a, a)))
+
+
+    # Hyperdimensional tour: one point cloud (two linked rings, like dtour's demo), with screens around it
+    # that each catch its shadow (an orthographic projection), on a closed path. Keyframe screens are
+    # yellow; the faint in-between screens are real projections too.
+    _cloud = []
+    for _i in range(150):
+        _t = _rng.uniform(0, 2 * _m.pi)
+        _n = [_rng.gauss(0, 0.06) for _ in range(3)]
+        _cloud.append(((-0.5 + _m.cos(_t) + _n[0], _m.sin(_t) + _n[1], _n[2]), _HUES[0]))
+        _cloud.append(((0.5 + _m.cos(_t) + _n[0], _n[1], _m.sin(_t) + _n[2]), _HUES[1]))
+
+    _UP = (0, 1, 0)
+    _VIEW = _unit((0.5, 0.45, 1.0))  # from the scene toward the viewer
+    _F = _mul(_VIEW, -1)
+    _RIGHT = _unit(_cross(_F, _UP))
+    _CUP = _cross(_RIGHT, _F)
+    _EYE, _FOCAL = _mul(_VIEW, 14), 560
+
+
+    def _project(p):
+        d = _add(p, _mul(_EYE, -1))
+        z = _dot(d, _F)
+        return 200 + _dot(d, _RIGHT) / z * _FOCAL, 100 - _dot(d, _CUP) / z * _FOCAL, z
+
+
+    _a1 = _unit(_cross(_F, _UP))
+    _a2 = _cross(_a1, _F)
+    _RADIUS, _HALF = 3.4, 0.75  # screen distance from the cloud, and half their size
+
+
+    def _screen_center(theta):
+        d = _unit(_add(_F, _mul(_a1, 1.5 * _m.cos(theta)), _mul(_a2, 0.75 * _m.sin(theta))))
+        return _mul(d, _RADIUS), d
+
+
+    def _screen(theta, key):
+        c, n = _screen_center(theta)
+        e1 = _unit(_cross(_UP, n))
+        e2 = _cross(n, e1)
+        corners = [_project(_add(c, _mul(e1, sx * _HALF), _mul(e2, sy * _HALF)))[:2] for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        k = _HALF / 1.75
+        dots = "".join(
+            '<circle cx="{:.1f}" cy="{:.1f}" r="0.7" fill="{}"/>'.format(*_project(_add(c, _mul(e1, _dot(p, e1) * k), _mul(e2, _dot(p, e2) * k)))[:2], hue)
+            for p, hue in _cloud[::3]
+        )
+        quad = " ".join(f"{x:.1f},{y:.1f}" for x, y in corners)
+        stroke = f'stroke="{_Y}" stroke-width="1.2"' if key else 'stroke="#666" stroke-width="0.6"'
+        return _project(c)[2], f'<g opacity="{1 if key else 0.4}"><polygon points="{quad}" fill="#141414" {stroke}/>{dots}</g>'
+
+
+    _KEYS = 4
+    _thetas = [(i / (2 * _KEYS)) * 2 * _m.pi + 0.35 for i in range(2 * _KEYS)]
+    _screens = sorted((_screen(t, i % 2 == 0) for i, t in enumerate(_thetas)), key=lambda s: -s[0])
+    _loop = "M" + " L".join("{:.1f},{:.1f}".format(*_project(_screen_center(2 * _m.pi * s / 120)[0])[:2]) for s in range(120)) + " Z"
+    _points = sorted(((_project(p), hue) for p, hue in _cloud), key=lambda q: -q[0][2])
+    _hyper = (
+        '<svg viewBox="0 0 400 200" style="width:100%; flex:1; min-height:0; margin:1cqw 0">'
+        f'<path d="{_loop}" fill="none" stroke="#fff" stroke-width="1.5"/>'
+        + "".join(s for _, s in _screens)
+        + "".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="1.5" fill="{hue}"/>' for (x, y, _), hue in _points)
+        + "</svg>"
+    )
+
+    # Sequential tour: a stack of aligned 2D embeddings of the same points, from continuous to clustered
+    # (like an attraction–repulsion sweep). Only the keyframes are real: dashed paths track a few points.
+    _centers = [(-0.55, -0.35), (0.0, 0.45), (0.6, -0.3)]
+    _seq = []
+    for _k, (_cx, _cy) in enumerate(_centers):
+        for _i in range(45):
+            _s = (_k + _rng.uniform(0, 1)) / 3
+            _band = (-0.8 + 1.6 * _s + _rng.gauss(0, 0.05), 0.35 * _m.sin(_m.pi * _s) - 0.15 + _rng.gauss(0, 0.07))
+            _blob = (_cx + _rng.gauss(0, 0.08), _cy + _rng.gauss(0, 0.08))
+            _seq.append((_band, _blob, _HUES[_k]))
+    _TRACKED = [5, 50, 100]
+    _PANELS = 4
+    _U, _V = (34, 9), (14, -38)  # a panel's local axes on the page (a card seen at an angle)
+
+
+    def _panel_xy(i, p):
+        cx, cy = 68 + i * 88, 120 - i * 10
+        return cx + p[0] * _U[0] + p[1] * _V[0], cy + p[0] * _U[1] + p[1] * _V[1]
+
+
+    def _layout(i, band, blob):
+        t = i / (_PANELS - 1)
+        return tuple((1 - t) * a + t * b for a, b in zip(band, blob))
+
+
+    _cards = []
+    for _i in reversed(range(_PANELS)):  # back to front
+        _quad = " ".join("{:.1f},{:.1f}".format(*_panel_xy(_i, c)) for c in ((-1, -1), (1, -1), (1, 1), (-1, 1)))
+        _dots = "".join(
+            '<circle cx="{:.1f}" cy="{:.1f}" r="1.1" fill="{}"/>'.format(*_panel_xy(_i, _layout(_i, b, c)), hue) for b, c, hue in _seq
+        )
+        _cards.append(f'<polygon points="{_quad}" fill="#141414" stroke="{_Y}" stroke-width="1.2"/>{_dots}')
+    _tracks = "".join(
+        '<path d="M{}" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="2.5 2.5"/>'.format(
+            " L".join("{:.1f},{:.1f}".format(*_panel_xy(i, _layout(i, *_seq[j][:2]))) for i in range(_PANELS))
+        )
+        + "".join(
+            '<circle cx="{:.1f}" cy="{:.1f}" r="2.2" fill="#fff" stroke="#000" stroke-width="0.8"/>'.format(*_panel_xy(i, _layout(i, *_seq[j][:2])))
+            for i in range(_PANELS)
+        )
+        for j in _TRACKED
+    )
+    _sequential = '<svg viewBox="0 0 400 200" style="width:100%; flex:1; min-height:0; margin:1cqw 0">' + "".join(_cards) + _tracks + "</svg>"
+
+
+    def _family(step, *parts):
+        """A column that fades in at build step `step`."""
+        return f'<div class="dt-col fragment" data-fragment-index="{step}" style="flex:1">{"".join(parts)}</div>'
+
+
     slide(
         kicker("Tour strategies"),
-        title("dtour supports two tour families"),
+        title("dtour supports two tour strategies"),
+        # Build steps (reveal.js fragments): 1 hyperdimensional tours · 2 sequential tours
         row(
-            col(
-                '<div class="dt-family-name">Hyperdimensional tours</div>',
+            _family(
+                1,
+                '<div class="dt-family-name" style="text-align:center">Hyperdimensional tours</div>',
+                _hyper,
                 '<div style="font-size:1.6cqw; font-weight:400">Keyframes are 2D projections of <b>one</b> high-dimensional space. '
                 "Every in-between frame is a valid projection too.</div>",
-                '<div class="dt-muted" style="font-size:1.5cqw; font-style:italic; font-weight:400; padding-top:1em; margin-bottom:-0.5em">What does the manifold look like from different angles?</div>',
-                "<ul class='dt-scaled' style='font-size:1.5cqw; color:#A9A9A9; padding-left:0'>"
-                "<li>E.g., little tour over PCs, Laplacian Eigenmaps tour, grand &amp; manual tours</li>"
-                "<li>Use for: exploring a space, validating a 2D embedding against its input (e.g., PCs vs. UMAP)</li>"
-                "</ul>",
-                style="flex:1",
             ),
-            col(
-                '<div class="dt-family-name">Sequential tours</div>',
+            _family(
+                2,
+                '<div class="dt-family-name" style="text-align:center">Sequential tours</div>',
+                _sequential,
                 '<div style="font-size:1.6cqw; font-weight:400">Keyframes are <b>aligned</b> 2D embeddings of the same points. '
                 "Only keyframes are real; in-betweens just track points.</div>",
-                '<div class="dt-muted" style="font-size:1.5cqw; font-style:italic; font-weight:400; padding-top:1em; margin-bottom:-0.5em">How does the manifold look across lenses?</div>',
-                "<ul class='dt-scaled' style='font-size:1.5cqw; color:#A9A9A9; padding-left:0'>"
-                "<li>E.g., hyperparameter sweeps (attraction–repulsion), DR methods, embedding models</li>"
-                "<li>Use for: telling genuine structure from method artifacts, comparing embedding models</li>"
-                "</ul>",
-                style="flex:1",
             ),
             gap="2cqw",
         ),
-        '<div style="font-size:1.8cqw"><span class="dt-y">Generic</span>: dtour supports any tour or sequence of 2D projections '
-        "that fits the two families!</div>",
     )
     return
 
