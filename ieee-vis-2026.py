@@ -87,16 +87,17 @@ def _(ASSETS, background, kicker, mo, row, slide, title):
 def _(img, kicker, slide, title):
     slide(
         kicker("The problem"),
-        # The punchline fades in on click (reveal.js fragment)
-        title('Understanding high-dimensional data is hard.<br>'
-              '<span class="dt-y fragment" data-fragment-index="1">One 2D projection is not enough.</span>'),
+        title("Understanding high-dimensional data is hard."),
+        '<div style="font-size:1.9cqw">Fashion MNIST: 70K images × 784 pixels, five 2D projections. Which one is <b>faithful</b>?<br>'
+        '<span class="dt-y">Each one hides or distorts some information.</span></div>',
         '<div style="flex:1"></div>',
         img("fmnist-strip-dark.png", "width:100%"),
         '<div class="dt-muted" style="display:grid; grid-template-columns:repeat(5,1fr); text-align:center; font-size:1.2cqw">'
         "<span>PCA</span><span>LE-like</span><span>ForceAtlas2-like</span><span>UMAP-like</span><span>t-SNE-like</span></div>",
+        # The punchline fades in on click (reveal.js fragment)
+        '<div class="dt-h1 dt-y fragment" data-fragment-index="1" style="text-align:center; margin-top:1.2cqw">'
+        "One 2D projection is not enough.</div>",
         '<div style="flex:1"></div>',
-        '<div style="font-size:1.9cqw">Fashion MNIST: 70K images × 784 pixels, five 2D projections. Which one is <b>faithful</b>?<br>'
-        '<span class="dt-y">Each one hides or distorts some information.</span></div>',
     )
     return
 
