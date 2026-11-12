@@ -683,9 +683,9 @@ def _(col, fmnist_images, fmnist_tour, slide, widget_row):
 def _(ASSETS, background, kicker, mo, slide, title):
     slide(
         background(mo.video(ASSETS / "arxiv.mov", controls=False, muted=True, autoplay=True, loop=True)),
-        kicker("So long, and thanks for all the vis!"),
+        kicker("Lost in dimensions?"),
         '<div style="flex:1"></div>',
-        title("Don't panic! Take a tour."),
+        title("Don't panic! Take a dtour."),
         '<div style="font-size:2.4cqw; line-height:1.6; margin-top:1.2cqw">'
         '<b class="dt-y">dtour.dev</b>&ensp;·&ensp;github.com/flekschas/dtour<br>'
         '<span class="dt-muted"><span style="font-family:ui-monospace, \'SF Mono\', Menlo, Consolas, monospace; font-size:0.92em">'
