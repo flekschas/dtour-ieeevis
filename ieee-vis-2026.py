@@ -683,7 +683,7 @@ def _(col, fmnist_images, fmnist_tour, slide, widget_row):
 @app.cell
 def _(img, kicker, slide):
     slide(
-        kicker("So long, and thanks for all the vis!"),
+        kicker("Lost in dimensions?"),
         '<div style="flex:1"></div>',
         # The Guide (assets/hhgttg.png, cut out of hhgttg.jpg's white background), centered over the tagline.
         # A black book on the black slide, so a soft glow behind it shows its shape instead of a hard outline.
@@ -694,7 +694,7 @@ def _(img, kicker, slide):
             "filter:drop-shadow(0 0 0.25cqw rgba(255,255,255,0.35)) drop-shadow(0 0 2.5cqw rgba(254,193,14,0.22))",
         )
         # Smaller than a regular title (3.8cqw), so the tagline fits on one line
-        + '<div class="dt-h1" style="font-size:2.75cqw">Don\'t panic! Take a tour.</div></div>',
+        + '<div class="dt-h1" style="font-size:2.75cqw">Don\'t panic! Take a dtour.</div></div>',
         '<div style="font-size:2.4cqw; line-height:1.6; margin-top:2.4cqw">'
         '<b class="dt-y">dtour.dev</b>&ensp;·&ensp;github.com/flekschas/dtour<br>'
         '<span class="dt-muted"><span style="font-family:ui-monospace, \'SF Mono\', Menlo, Consolas, monospace; font-size:0.92em">'
