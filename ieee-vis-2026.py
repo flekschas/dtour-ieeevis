@@ -107,16 +107,16 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
     import re as _re
 
     # Build steps (reveal.js fragments): 1 freedom-of-traversal axis · 2 cognitive load (the "switch tools"
-    # arrows show from the start) · 3 play the guided tour · 4 play the manual tour (guided tour stops)
-    # · 5 dtour unifies the modes · 6 the cognitive load drops · 7 mantra · 8 takeaway
+    # arrows and the looping tour videos show from the start) · 3 dtour unifies the modes · 4 mantra · 5 the
+    # cognitive load drops · 6 takeaway
     def _step(i, effect="", cls=""):
         classes = " ".join(c for c in ("fragment", effect, cls) if c)
         return f'class="{classes}" data-fragment-index="{i}"'
 
 
     def _swap(effect="", cls=""):
-        """Step 5, dtour takes over: a slow crossfade (.dt-d-swap) instead of reveal's quick default."""
-        return _step(5, effect, f"dt-d-swap {cls}".strip())
+        """Step 3, dtour takes over: a slow crossfade (.dt-d-swap) instead of reveal's quick default."""
+        return _step(3, effect, f"dt-d-swap {cls}".strip())
 
 
     _Y = "#FEC10E"
@@ -125,7 +125,7 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
         (800, "Guided tour", "a movie along a fixed path", "Zoom &amp; filter", "scrub, select &amp; color"),
         (1370, "Manual tour", "drag axes · full control", "Details on demand", "manual &amp; grand tour"),
     ]
-    # Each box shows its classic tool, cropped to fill the box. When dtour takes over (step 5), the
+    # Each box shows its classic tool, cropped to fill the box. When dtour takes over (step 3), the
     # tools fade out and dtour's take on each mode fades in. Videos start and stop with the build steps.
     def _src(element):
         """The URL marimo serves an asset under, so large media isn't inlined as a data URI."""
@@ -148,18 +148,20 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
         return f'<img src="{_src(mo.image(ASSETS / name))}" {_COVER}/>'
 
 
-    def _video(name, start, until=None):
+    def _video(name, start=None, until=None):
+        """Plays from fragment class `start` (or as soon as the slide is shown) until fragment class `until`."""
+        start_attr = f' data-play-from="{start}"' if start else ""
         until_attr = f' data-play-until="{until}"' if until else ""
         return (
             f'<video src="{_src(mo.video(ASSETS / name))}" muted="" loop="" playsinline="" preload="auto"'
-            f' data-play-from="{start}"{until_attr} {_COVER}></video>'
+            f'{start_attr}{until_attr} {_COVER}></video>'
         )
 
 
     _tools = [
         _img("scatter-plot-matrix-original.gif"),  # transparent, on the white box background
-        _video("ggobi - tour - short.mov", start="dt-play-1", until="dt-play-2"),
-        _video("manual-tour-distill.mov", start="dt-play-2", until="dt-play-dtour"),
+        _video("ggobi - tour - short.mov", until="dt-play-dtour"),
+        _video("manual-tour-distill.mov", until="dt-play-dtour"),
     ]
     _dtour = [
         _img("dtour-overview.png"),
@@ -178,7 +180,7 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
         + _fill(x, dtour, _swap())
         + f'<text x="{x}" y="308" class="dt-d-sub">{sub}</text>'
         f'<text x="{x}" y="330" {_swap("fade-out", "dt-d-credit")}>{credit}</text>'
-        f'<g {_step(7, "fade-up")}><rect x="{x - 200}" y="216" width="400" height="64" rx="14" class="dt-d-mantra"/>'
+        f'<g {_step(4, "fade-up")}><rect x="{x - 200}" y="216" width="400" height="64" rx="14" class="dt-d-mantra"/>'
         f'<text x="{x}" y="244" class="dt-d-mantra-name">{mantra}</text><text x="{x}" y="270" class="dt-d-mantra-sub">{mantra_sub}</text></g>'
         for (x, name, sub, mantra, mantra_sub), tool, dtour, credit in zip(_modes, _tools, _dtour, _credits)
     )
@@ -191,14 +193,14 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
         )
     # Cognitive-load curves, traced from the hand-drawn sketches (assets/cognitive-load-*.png) in slide
     # coordinates: illustrative, not data. Both are resampled at the same x positions, so the high curve can
-    # morph into the low one when dtour lowers the load (step 6), leaving a faint ghost of itself behind.
+    # morph into the low one when dtour lowers the load (step 5), leaving a faint ghost of itself behind.
     _TRACED = {
         "before": "9,548.0 25,547.3 80,546.6 134,547.0 161,546.1 201,543.8 316,543.7 342,542.4 364,536.4 390,526.4 398,522.6 419,509.6 447,495.5 455,493.4 466,492.5 502,491.9 526,492.9 543,496.5 557,501.1 564,502.5 590,503.3 623,503.3 663,502.0 762,500.9 863,498.6 899,497.0 954,496.1 984,494.2 998,492.5 1011,490.0 1033,484.3 1053,475.1 1103,449.9 1116,445.6 1132,444.1 1162,443.9 1176,445.2 1185,447.2 1214,456.2 1223,458.6 1245,461.9 1272,463.5 1335,464.5 1407,464.0 1456,462.4 1533,461.5 1563,459.9 1590,459.3",
         "dtour": "9,548.0 100,547.6 265,545.4 368,545.4 405,543.8 422,542.3 488,533.8 528,529.9 650,522.0 748,517.9 811,516.9 1081,516.6 1125,516.0 1202,513.4 1299,505.4 1417,498.4 1477,497.6 1590,498.2",
     }
 
 
-    def _curve(name, step=6):
+    def _curve(name):
         pts = [tuple(map(float, p.split(","))) for p in _TRACED[name].split()]
         out, j = [], 0
         for x in range(9, 1591, 6):
@@ -258,7 +260,7 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
     </defs>
     <g {_swap()}><rect x="1.5" y="0" width="1597" height="354" rx="20" pathLength="1" class="dt-d-dtour"/>
       <text x="0" y="-12" fill="{_Y}" font-size="30" font-weight="800">dtour</text></g>
-    <g {_step(3, cls="dt-play-1")}></g><g {_step(4, cls="dt-play-2")}></g><g {_swap(cls="dt-play-dtour")}></g>
+    <g {_swap(cls="dt-play-dtour")}></g>
     {_boxes}
     <g {_step(1)}>
       <line x1="0" y1="389" x2="1590" y2="389" class="dt-d-axis" marker-end="url(#dt-d-axis-head)"/>
@@ -269,8 +271,8 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
     <g {_swap("fade-out")}>{_arrows("dt-d-arrow", "dt-d-head", note=True)}</g>
     <g {_swap()}>{_arrows("dt-d-arrow-y", "dt-d-head-y")}</g>
     <g {_step(2)}>
-      <g {_step(6, cls="dt-d-low")}></g>
-      <path d="{_line_d(_high)}" {_step(6, cls="dt-d-ghost")}/>
+      <g {_step(5, cls="dt-d-low")}></g>
+      <path d="{_line_d(_high)}" {_step(5, cls="dt-d-ghost")}/>
       <path class="dt-d-area"/><path class="dt-d-load"/>
       <text x="0" y="585" class="dt-d-label">Low</text>
       <text x="800" y="585" class="dt-d-label" text-anchor="middle" font-weight="800">Cognitive load</text>
@@ -287,7 +289,7 @@ def _(ASSETS, kicker, mo, play_on_fragments, slide):
         "</div>",
         _diagram,
         '<div style="flex:1"></div>',
-        f'<div style="font-size:1.7cqw; text-align:center" {_step(8)}><span class="dt-y">Move freely between modes:</span> every shift is animated, so you never lose track of your points '
+        f'<div style="font-size:1.7cqw; text-align:center" {_step(6)}><span class="dt-y">Move freely between modes:</span> every shift is animated, so you never lose track of your points '
         '<span class="dt-muted">(object constancy)</span>.</div>',
     )
     return
@@ -994,12 +996,18 @@ def _(AnyWidget, Int, html, mo):
 
 
     def background(content):
-        """A faded-in slide background, right-aligned and spanning the full height of the reveal.js viewport."""
+        """A faded-in slide background, right-aligned and spanning the full height of the reveal.js viewport.
+
+        reveal.js pauses videos when leaving a slide and only restarts those marked `data-autoplay`.
+        """
         measure = f'<div style="position:absolute; width:0; height:0; overflow:hidden">{mo.as_html(slide_bleed).text}</div>'
-        return f'{measure}<div class="dt-bg dt-fade-in">{html(content)}</div>'
+        content = html(content).replace("<video ", "<video data-autoplay ")
+        return f'{measure}<div class="dt-bg dt-fade-in">{content}</div>'
 
     class FragmentPlayer(AnyWidget):
         """Plays the slide's `<video data-play-from="a" data-play-until="b">` while the fragment with class `a` is shown and `b` is not.
+
+        Without `data-play-from`, the video plays as soon as the slide is shown.
 
         Classes, not fragment indices: reveal.js renumbers the indices from 0.
         """
@@ -1019,9 +1027,10 @@ def _(AnyWidget, Int, html, mo):
             if (!section) { frame = requestAnimationFrame(attach); return; }
             const shown = (cls) => cls != null && !!slide.querySelector(`.fragment.visible.${cls}`);
             const update = () => {
-              for (const video of slide.querySelectorAll("video[data-play-from]")) {
+              for (const video of slide.querySelectorAll("video[data-play-from], video[data-play-until]")) {
+                const { playFrom, playUntil } = video.dataset;
                 const play = section.classList.contains("present")
-                  && shown(video.dataset.playFrom) && !shown(video.dataset.playUntil);
+                  && (playFrom == null || shown(playFrom)) && !shown(playUntil);
                 if (play && video.paused) video.play().catch(() => {});
                 if (!play && !video.paused) video.pause();
               }
@@ -1145,6 +1154,7 @@ def _(DATA_URL, dtour, pa, pl, pq, urllib):
     fmnist = pl.from_arrow(_table)
     fmnist_dims = [c for c in fmnist.columns if c.startswith("sp_")]
     fmnist_colors = dtour.build_color_map(sorted(fmnist["label"].unique()), theme="dark")
+    fmnist_colors["Shirt"], fmnist_colors["Trouser"] = fmnist_colors["Trouser"], fmnist_colors["Shirt"]
     fmnist_spectrum_tour = dtour.TourResult.from_parquet(_table)
     fmnist_spectrum_tour.feature_names = fmnist_dims
     return fmnist, fmnist_colors, fmnist_dims, fmnist_spectrum_tour
