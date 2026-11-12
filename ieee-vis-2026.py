@@ -303,7 +303,7 @@ def _(slide):
     return
 
 
-@app.cell(expand_output=True)
+@app.cell
 def _(kicker, slide, title):
     import math as _math
 
@@ -489,7 +489,6 @@ def _(kicker, slide, title):
         _figure,
         _bullet_row,
     )
-
     return
 
 
@@ -681,26 +680,22 @@ def _(col, fmnist_images, fmnist_tour, slide, widget_row):
 
 
 @app.cell
-def _(img, kicker, slide):
+def _(ASSETS, background, kicker, mo, slide, title):
     slide(
+        background(mo.video(ASSETS / "arxiv.mov", controls=False, muted=True, autoplay=True, loop=True)),
         kicker("So long, and thanks for all the vis!"),
         '<div style="flex:1"></div>',
-        # The Guide (assets/hhgttg.png, cut out of hhgttg.jpg's white background), centered over the tagline.
-        # A black book on the black slide, so a soft glow behind it shows its shape instead of a hard outline.
-        '<div style="align-self:flex-start; display:flex; flex-direction:column; align-items:center; gap:1.6cqw">'
-        + img(
-            "hhgttg.png",
-            "width:22cqw; margin-bottom:1.2cqw; "
-            "filter:drop-shadow(0 0 0.25cqw rgba(255,255,255,0.35)) drop-shadow(0 0 2.5cqw rgba(254,193,14,0.22))",
-        )
-        # Smaller than a regular title (3.8cqw), so the tagline fits on one line
-        + '<div class="dt-h1" style="font-size:2.75cqw">Don\'t panic! Take a tour.</div></div>',
-        '<div style="font-size:2.4cqw; line-height:1.6; margin-top:2.4cqw">'
+        title("Don't panic! Take a tour."),
+        '<div style="font-size:2.4cqw; line-height:1.6; margin-top:1.2cqw">'
         '<b class="dt-y">dtour.dev</b>&ensp;·&ensp;github.com/flekschas/dtour<br>'
         '<span class="dt-muted"><span style="font-family:ui-monospace, \'SF Mono\', Menlo, Consolas, monospace; font-size:0.92em">'
         "pip install dtour</span> · Jupyter, marimo, React</span></div>",
-        '<div class="dt-badge">🏆 Best Short Paper Honorable Mention</div>',
-        '<div class="dt-muted" style="font-size:1.3cqw; margin-top:1.6cqw">Fritz Lekschas · Nezar Abdennur</div>',
+        '<div class="dt-badge">Best Short Paper Honorable Mention</div>',
+        '<div class="dt-muted" style="display:flex; justify-content:space-between; align-items:last baseline; '
+        'font-size:1.3cqw; margin-top:1.6cqw">'
+        "<div>Fritz Lekschas · Nezar Abdennur</div>"
+        '<div>Four aligned 2D UMAPs of different text embeddings of 3M arXiv abstracts</div>'
+        "</div>",
     )
     return
 
@@ -900,7 +895,6 @@ def _(base64, cache, mo, np, pl):
         ASSETS,
         DATA_URL,
         col,
-        data_uri,
         html,
         img,
         kicker,
