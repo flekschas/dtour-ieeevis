@@ -10,3 +10,6 @@ __marimo__
 *.bbl
 *.blg
 *.synctex.gz
+
+# Intermediate marimo export (hundreds of MB); scripts/build_web_deck.py turns it into site/index.html
+deck.html
